@@ -69,7 +69,7 @@ void setup() {
    // put your setup code here, to run once:
   for(int i=0; i<numPins; i++)
   {
-    pinMode(analogPins[i],INPUT_PULLUP);
+    pinMode(analogPins[i],INPUT);
   }
   for(int i =0; i<addrPins; i++)
   {

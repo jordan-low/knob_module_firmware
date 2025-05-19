@@ -1,7 +1,7 @@
 import smbus2
 import time
 
-I2CBUS = 8
+I2CBUS = 7
 I2C_ADDR = 0x49
 
 bus = smbus2.SMBus(I2CBUS)
