@@ -1,0 +1,88 @@
+import smbus2
+import time
+
+I2CBUS = 7
+I2C_ADDR = 0x49
+SAMPLING_RATE = 100
+bus = smbus2.SMBus(I2CBUS)
+
+REG_ENCODER_1 = 0x01
+REG_ENCODER_2 = 0x02
+REG_ENCODER_3 = 0x03
+REG_ENCODER_4 = 0x04
+REG_ENCODER_POS = 0x20
+REG_ENCODER_BTN = 0x30
+REG_VERSION = 0xFE
+
+def set_position(index, value):
+    lsb = value & 0xFF
+    msb = (value >> 8) & 0xFF
+    bus.write_i2c_block_data(I2C_ADDR, 0x00 + index, [lsb, msb])
+    time.sleep(0.01)
+
+def read_encoder(reg):
+    # First send a "read request" (0x00) followed by the register address
+    bus.write_i2c_block_data(I2C_ADDR, 0x00, [reg])
+    time.sleep(0.01)  # Short delay
+
+    # Read 3 bytes: LSB, MSB, button
+    data = bus.read_i2c_block_data(I2C_ADDR, reg, 3)
+    pos = data[0] | (data[1] << 8)
+    if pos & 0x8000:  # Convert to signed int16 if needed
+        pos -= 0x10000
+    button = data[2]
+    return pos, button
+
+'''
+def read_analog(reg):
+    bus.write_byte(I2C_ADDR,reg)
+    time.sleep(0.01)
+    data = bus.read_i2c_block_data(I2C_ADDR,reg,2)
+    value = data[0]<<8 |data[1]
+    value = value/1024 *3.3
+    return (value)
+
+def set_led(value):
+    bus.write_i2c_block_data(I2C_ADDR,REG_LED_STATE,[value])
+    time.sleep(0.01)
+
+def set_sampling_rate(value):
+    bus.write_i2c_block_data(I2C_ADDR,REG_SAMPLING_RATE,[value])
+
+def get_version():
+    bus.write_byte(I2C_ADDR,REG_VERSION,4)
+    time.sleep(0.01)
+    data = bus.read_i2c_block_data(I2C_ADDR,REG_VERSION,4)
+    hardware_id = str(data[0]) +"." + str(data[1])
+    software_id = str(data[2])+"." + str(data[3])
+    return hardware_id,software_id
+'''
+
+try:
+    #set_sampling_rate(SAMPLING_RATE)
+    #hardware_version , firmware_version = get_version()
+    #print(f"hardware version : {hardware_version}, firmware version: {firmware_version}")
+    prev_buttons = [0, 0, 0, 0]
+
+    while True:
+        data_pos = []
+        data_btn = []
+        for i in range(1,5):
+            pos, button = read_encoder(0x00+i)
+            if prev_buttons[i-1] == 1 and button == 0:
+                set_position(i, 0)  # Reset encoder i to 0
+            prev_buttons[i-1] = button 
+
+            data_pos.append(pos)
+            data_btn.append(button)
+            
+        #a0 = read_analog(REG_ANALOG_0)
+        #a1 = read_analog(REG_ANALOG_1)
+        #a2 = read_analog(REG_ANALOG_2)
+        #a3 = read_analog(REG_ANALOG_3)
+        #print(f"analog value: {a0:.2f} {a1:.2f} {a2:.2f} {a3:.2f}")
+        print(f"Encoder position: {data_pos[0]}, {data_pos[1]}, {data_pos[2]}, {data_pos[3]}/ Button pressed: {bool(data_btn[0])}, {bool(data_btn[1])}, {bool(data_btn[2])}, {bool(data_btn[3])}")
+        time.sleep(SAMPLING_RATE/1000)
+
+except KeyboardInterrupt:        
+    print("exiting")
