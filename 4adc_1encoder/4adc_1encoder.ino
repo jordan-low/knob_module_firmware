@@ -2,12 +2,12 @@
 #include <Wire.h>
 #include <ArduinoUniqueID.h>
 
-#define I2C_ADDR 0x08
+#define I2C_ADDR 0x47
 
 #define HARDWARE_VER_MAJOR 1
 #define HARDWARE_VER_MINOR 0
 #define SOFTWARE_VER_MAJOR 1
-#define SOFTWARE_VER_MINOR 3
+#define SOFTWARE_VER_MINOR 2
 
 // Register definitions
 #define REG_ENCODER1   0x01
@@ -29,7 +29,7 @@ const int numAnalogPins = sizeof(analogPins) / sizeof(analogPins[0]);
 // Internal configuration
 int analogValues[numAnalogPins];
 volatile uint8_t I2C_addr = 0x00;
-volatile uint8_t RegisterAddress = REG_ENCODER1;
+volatile uint8_t RegisterAddress = 0x01;
 uint8_t sampling_Delay = 100;
 uint8_t ledState = 0;
 
@@ -45,6 +45,7 @@ struct Encoder {
 Encoder encoder = {13, 16, 12, HIGH, 0, false};
 
 void requestEvent() {
+  uint8_t ch = RegisterAddress - REG_ENCODER1;
   switch (RegisterAddress) { 
     case REG_ENCODER1: // Encoder 1
       {
@@ -100,7 +101,6 @@ void receiveEvent(int BytesReceived) {
       uint8_t data1 = Wire.read();
       
       if (BytesReceived == 2) {
-
         switch (RegisterAddress) {
           case REG_SAMPLING: 
             if (data1 > 0 && data1 < 200) {

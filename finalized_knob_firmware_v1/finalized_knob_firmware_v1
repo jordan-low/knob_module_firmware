@@ -37,7 +37,6 @@ def read_encoder(reg):
     return pos, button
 
 
-'''
 def read_analog(reg):
     bus.write_byte(I2C_ADDR,reg)
     time.sleep(0.01)
@@ -60,7 +59,7 @@ def get_version():
     hardware_id = str(data[0]) +"." + str(data[1])
     software_id = str(data[2])+"." + str(data[3])
     return hardware_id,software_id
-'''
+
 
 try:
     #set_sampling_rate(SAMPLING_RATE)
