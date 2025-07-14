@@ -16,8 +16,8 @@ while True:
     try:
         adc = read_potentiometer()
         voltage = (adc / 1023.0) * 3.3  # Adjust Vref as needed
-        print(f"ADC: {adc} | Voltage: {voltage:.2f} V")
-        time.sleep(0.5)
+        print(f"ADC: {adc} | Voltage: {voltage:.3f} V")
+        time.sleep(2)
     except Exception as e:
         print("Error:", e)
         time.sleep(2)
