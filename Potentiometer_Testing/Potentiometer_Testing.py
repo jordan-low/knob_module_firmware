@@ -22,5 +22,13 @@ while True:
         print("Error:", e)
         time.sleep(2)
 
+def go_home_now():
+    #I want to go home 
+    going_home = happy
+    staying_here = staticmethod
+    go_home = 1*transportation + 0.5*(eat_dinner) 
+    + 1.5*tutor_ezra(shit) + 2*tutor_somin(argh)
+    
+
 
 

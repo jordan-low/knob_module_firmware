@@ -11,6 +11,10 @@ REG_ENCODER_1 = 0x01
 REG_ENCODER_2 = 0x02
 REG_ENCODER_3 = 0x03
 REG_ENCODER_4 = 0x04
+REG_ANALOG_0 = 0x05
+REG_ANALOG_1 = 0x06
+REG_ANALOG_2 = 0x07
+REG_ANALOG_3 = 0x08
 REG_ENCODER_POS = 0x20
 REG_ENCODER_BTN = 0x30
 REG_VERSION = 0xFE
@@ -50,7 +54,7 @@ def set_led(value):
     time.sleep(0.01)
 
 def set_sampling_rate(value):
-    bus.write_i2c_block_data(I2C_ADDR,REG_SAMPLING_RATE,[value])
+    bus.write_i2c_block_data(I2C_ADDR,SAMPLING_RATE,[value])
 
 def get_version():
     bus.write_byte(I2C_ADDR,REG_VERSION,4)
@@ -62,9 +66,9 @@ def get_version():
 
 
 try:
-    #set_sampling_rate(SAMPLING_RATE)
-    #hardware_version , firmware_version = get_version()
-    #print(f"hardware version : {hardware_version}, firmware version: {firmware_version}")
+    set_sampling_rate(SAMPLING_RATE)
+    hardware_version , firmware_version = get_version()
+    print(f"hardware version : {hardware_version}, firmware version: {firmware_version}")
     prev_buttons = [0, 0, 0, 0]
 
     while True:
@@ -78,15 +82,15 @@ try:
 
             data_pos.append(pos)
             data_btn.append(button)
-        #a0 = read_analog(REG_ANALOG_0)
-        #a1 = read_analog(REG_ANALOG_1)
-        #a2 = read_analog(REG_ANALOG_2)
-        #a3 = read_analog(REG_ANALOG_3)
-        #print(f"analog value: {a0:.2f} {a1:.2f} {a2:.2f} {a3:.2f}")
+        a0 = read_analog(REG_ANALOG_0)
+        a1 = read_analog(REG_ANALOG_1)
+        a2 = read_analog(REG_ANALOG_2)
+        a3 = read_analog(REG_ANALOG_3)
+        print(f"analog value: {a0:.2f} {a1:.2f} {a2:.2f} {a3:.2f}")
         bus.write_byte(I2C_ADDR, 0x10)  # Tell Arduino we want unique ID register
         time.sleep(0.01)
         id_num = bus.read_i2c_block_data(I2C_ADDR, 0x10, unique_id_size)
-        print(f"Encoder position: {data_pos[0]}, {data_pos[1]}, {data_pos[2]}, {data_pos[3]}/ Button pressed: {bool(data_btn[0])}, {bool(data_btn[1])}, {bool(data_btn[2])}, {bool(data_btn[3])}/ Received Unique ID:", " ".join(f"{b:02X}" for b in id_num))
+        #print(f"Encoder position: {data_pos[0]}, {data_pos[1]}, {data_pos[2]}, {data_pos[3]}/ Button pressed: {bool(data_btn[0])}, {bool(data_btn[1])}, {bool(data_btn[2])}, {bool(data_btn[3])}/ Received Unique ID:", " ".join(f"{b:02X}" for b in id_num))
 
 
 except KeyboardInterrupt:        

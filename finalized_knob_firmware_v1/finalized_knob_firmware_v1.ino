@@ -105,18 +105,18 @@ void requestEvent() {
     break;
 
     case 0x06: //read Analog[1]
-    Wire.write(analogValues[0]>>8 & 0xFF);
-    Wire.write(analogValues[0] & 0xFF);
+    Wire.write(analogValues[1]>>8 & 0xFF);
+    Wire.write(analogValues[1] & 0xFF);
     break;
 
     case 0x07: //read Analog[2]
-    Wire.write(analogValues[0]>>8 & 0xFF);
-    Wire.write(analogValues[0] & 0xFF);
+    Wire.write(analogValues[2]>>8 & 0xFF);
+    Wire.write(analogValues[2] & 0xFF);
     break;
 
     case 0x08: //read Analog[3]
-    Wire.write(analogValues[0]>>8 & 0xFF);
-    Wire.write(analogValues[0] & 0xFF);
+    Wire.write(analogValues[3]>>8 & 0xFF);
+    Wire.write(analogValues[3] & 0xFF);
     break;
 
     case 0xFE: //version
