@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <ArduinoUniqueID.h>
 
-#define I2C_ADDR 0x08
+#define I2C_ADDR 0x49
 
 #define HARDWARE_VER_MAJOR 1
 #define HARDWARE_VER_MINOR 0
@@ -13,27 +13,38 @@
 #define REG_ENCODER2   0x02
 #define REG_ENCODER3   0x03
 #define REG_ENCODER4   0x04
-#define REG_ANALOG0  0x05
-#define REG_ANALOG1  0x06
-#define REG_ANALOG2  0x07
-#define REG_ANALOG3  0x08
-#define REG_VERSION   0xFE
-#define REG_UNIQUE_ID 0x10
+#define REG_ANALOG0    0x05
+#define REG_ANALOG1    0x06
+#define REG_ANALOG2    0x07
+#define REG_ANALOG3    0x08
+#define REG_ANALOG0_POS 0x09
+#define REG_ANALOG1_POS 0x0A
+#define REG_ANALOG2_POS 0x0B
+#define REG_VERSION    0xFE
+#define REG_UNIQUE_ID  0x10
 
-//pin configuration
 const int addrPins[] = {2, 1, 20};
 const int numAddrPins = sizeof(addrPins) / sizeof(addrPins[0]);
-const int analogPins[] = {18, 19, 7, 6}; 
+const int analogPins[] = {18, 19, 7, 6};
 const int numAnalogPins = sizeof(analogPins) / sizeof(analogPins[0]);
-
-//internal configuration
 
 int analogValues[numAnalogPins];
 volatile uint8_t I2C_addr = 0x00;
 volatile uint8_t RegisterAddress = REG_ENCODER1;
-uint8_t sampling_Delay =100;
+uint8_t sampling_Delay = 100;
 uint8_t ledState = 0;
 
+float A_voltage[] = {0.0, 0.0, 0.0};
+int A_pos[] = {0, 0, 0};
+
+float get_voltage(int Analogread) {
+  return Analogread / 1024.0 * 3.3;
+}
+
+int get_position(float Vin, float Vref) {
+  float V_switch = Vref / 19.0;
+  return round(Vin / V_switch);
+}
 
 struct Encoder {
   int pinA;
@@ -51,82 +62,56 @@ Encoder encoders[4] = {
   {4, 5, 9, HIGH, 0, false},
 };
 
-
 void requestEvent() {
   uint8_t ch = RegisterAddress - REG_ENCODER1;
-  switch (RegisterAddress) { 
-    case 0x01: //encoder 1
-    if (ch < 4) {
-      int16_t p = encoders[ch].value;
-      uint8_t btn = encoders[ch].buttonPressed ? 1 : 0;
-
-      Wire.write(p & 0xFF);        // LSB
-      Wire.write((p >> 8) & 0xFF); // MSB
-      Wire.write(btn);   
-    }
-    break;
-
-    case 0x02: //encoder 2
-    if (ch < 4) {
-      int16_t p = encoders[ch].value;
-      uint8_t btn = encoders[ch].buttonPressed ? 1 : 0;
-
-      Wire.write(p & 0xFF);        // LSB
-      Wire.write((p >> 8) & 0xFF); // MSB
-      Wire.write(btn);   
-    }
-    break;
-
-    case 0x03: //encoder 3
-    if (ch < 4) {
-      int16_t p = encoders[ch].value;
-      uint8_t btn = encoders[ch].buttonPressed ? 1 : 0;
-
-      Wire.write(p & 0xFF);        // LSB
-      Wire.write((p >> 8) & 0xFF); // MSB
-      Wire.write(btn);   
-    }
-    break;
-
-    case 0x04: //encoder 4
-    if (ch < 4) {
-      int16_t p = encoders[ch].value;
-      uint8_t btn = encoders[ch].buttonPressed ? 1 : 0;
-
-      Wire.write(p & 0xFF);        // LSB
-      Wire.write((p >> 8) & 0xFF); // MSB
-      Wire.write(btn);   
-    }
-    break;
-
-    case 0x05: //read Analog[0]
-    Wire.write(analogValues[0]>>8 & 0xFF);
-    Wire.write(analogValues[0] & 0xFF);
-    break;
-
-    case 0x06: //read Analog[1]
-    Wire.write(analogValues[1]>>8 & 0xFF);
-    Wire.write(analogValues[1] & 0xFF);
-    break;
-
-    case 0x07: //read Analog[2]
-    Wire.write(analogValues[2]>>8 & 0xFF);
-    Wire.write(analogValues[2] & 0xFF);
-    break;
-
-    case 0x08: //read Analog[3]
-    Wire.write(analogValues[3]>>8 & 0xFF);
-    Wire.write(analogValues[3] & 0xFF);
-    break;
-
-    case 0xFE: //version
-    Wire.write(HARDWARE_VER_MAJOR);
-    Wire.write(HARDWARE_VER_MINOR);
-    Wire.write(SOFTWARE_VER_MAJOR);
-    Wire.write(SOFTWARE_VER_MINOR);
-    break;
-
-    case 0x10: //Unique ID
+  switch (RegisterAddress) {
+    case REG_ENCODER1:
+    case REG_ENCODER2:
+    case REG_ENCODER3:
+    case REG_ENCODER4:
+      if (ch < 4) {
+        int16_t p = encoders[ch].value;
+        uint8_t btn = encoders[ch].buttonPressed ? 1 : 0;
+        Wire.write(p & 0xFF);
+        Wire.write((p >> 8) & 0xFF);
+        Wire.write(btn);
+      }
+      break;
+    case REG_ANALOG0:
+      Wire.write((analogValues[0] >> 8) & 0xFF);
+      Wire.write(analogValues[0] & 0xFF);
+      break;
+    case REG_ANALOG1:
+      Wire.write((analogValues[1] >> 8) & 0xFF);
+      Wire.write(analogValues[1] & 0xFF);
+      break;
+    case REG_ANALOG2:
+      Wire.write((analogValues[2] >> 8) & 0xFF);
+      Wire.write(analogValues[2] & 0xFF);
+      break;
+    case REG_ANALOG3:
+      Wire.write((analogValues[3] >> 8) & 0xFF);
+      Wire.write(analogValues[3] & 0xFF);
+      break;
+    case REG_ANALOG0_POS:
+      Wire.write(A_pos[0] & 0xFF);
+      Wire.write((A_pos[0] >> 8) & 0xFF);
+      break;
+    case REG_ANALOG1_POS:
+      Wire.write(A_pos[1] & 0xFF);
+      Wire.write((A_pos[1] >> 8) & 0xFF);
+      break;
+    case REG_ANALOG2_POS:
+      Wire.write(A_pos[2] & 0xFF);
+      Wire.write((A_pos[2] >> 8) & 0xFF);
+      break;
+    case REG_VERSION:
+      Wire.write(HARDWARE_VER_MAJOR);
+      Wire.write(HARDWARE_VER_MINOR);
+      Wire.write(SOFTWARE_VER_MAJOR);
+      Wire.write(SOFTWARE_VER_MINOR);
+      break;
+    case REG_UNIQUE_ID:
       for (size_t i = 0; i < UniqueIDsize; i++) {
         Wire.write(UniqueID[i]);
       }
@@ -140,18 +125,15 @@ void receiveEvent(int BytesReceived) {
     if (BytesReceived >= 2) {
       uint8_t data1 = Wire.read();
       if (BytesReceived == 2) {
-        // One-byte write
         switch (RegisterAddress) {
           case 0x30:
-            if (data1 > 0 && data1 < 200)
-              sampling_Delay = data1;
+            if (data1 > 0 && data1 < 200) sampling_Delay = data1;
             break;
           case 0x20:
             ledState = data1;
             break;
         }
       } else if (BytesReceived == 3) {
-        // Two-byte write for encoder value
         uint8_t data2 = Wire.read();
         int16_t newPos = (int16_t)((data2 << 8) | data1);
         uint8_t ch = RegisterAddress - REG_ENCODER1;
@@ -187,13 +169,45 @@ void setup() {
   Wire.begin(I2C_addr);
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent);
-}
-
-void loop() {
+/*
   for (int i = 0; i < numAnalogPins; i++) {
     analogValues[i] = analogRead(analogPins[i]);
+    if (i < 3) {
+      A_voltage[i] = get_voltage(analogValues[i]);
+      float v_ref = get_voltage(analogValues[3]);
+      A_pos[i] = get_position(A_voltage[i], v_ref);
+    }
+  }
+*/
+}
+
+
+
+// Then modify your loop() function like this:
+void loop() {
+  //float v_ref = get_voltage(analogRead(analogPins[3]));
+  for (int i = 0; i < 4; i++) {
+    analogValues[i] = analogRead(analogPins[i]);
+    //float a_voltage_read = get_voltage(analogValues[i]);
+
+    // Print raw voltages for debug
+    /*
+
+    if (abs(A_voltage[i] - a_voltage_read) > 0.02) {
+      if (A_voltage[i] > a_voltage_read) {
+        A_pos[i] -= 1;
+      } else {
+        A_pos[i] += 1;
+      }
+      A_voltage[i] = a_voltage_read;
+    } else {
+      A_voltage[i] = a_voltage_read;
+    }
+
+    */
   }
 
+  // Keep the encoder update part
   for (int i = 0; i < 4; i++) {
     int a = digitalRead(encoders[i].pinA);
     int b = digitalRead(encoders[i].pinB);
@@ -207,5 +221,5 @@ void loop() {
     encoders[i].buttonPressed = (digitalRead(encoders[i].pinButton) == LOW);
   }
 
-  delay(2);
+  delay(500);  // Slower update so you can read the Serial Monitor
 }

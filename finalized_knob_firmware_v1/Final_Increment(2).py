@@ -53,6 +53,8 @@ def read_analog(reg):
     value = value/1024 *3.3
     return (value)
 
+
+
 def read_position(reg):
     bus.write_byte(I2C_ADDR, reg)
     time.sleep(0.01)
@@ -84,9 +86,26 @@ try:
     print(f"hardware version : {hardware_version}, firmware version: {firmware_version}")
     prev_buttons = [0, 0, 0, 0]
 
+    V_ref = 3.3
+    #read_analog(REG_ANALOG_3)
+    V_switch = V_ref/19
+
+    A_voltage = [0.0, 0.0, 0.0]
+    A_pos = [0,0,0]
+
+    for i in range(3):
+        voltage = read_analog(REG_ANALOG_0 + i)
+        pos = round(read_analog(REG_ANALOG_0 + i)/3.3*19)
+        A_voltage[i]= voltage
+        A_pos[i] = pos
+        print(pos)
+    print(f"{A_voltage[0]} {A_voltage[1]} {A_voltage[2]}")
+    print(f"{A_pos[0]} {A_pos[1]} {A_pos[2]}")
+
     while True:
         data_pos = []
         data_btn = []
+        data_analog = [0.0, 0.0, 0.0]
         for i in range(1,5):
             pos, button = read_encoder(0x00+i)
             if prev_buttons[i-1] == 1 and button == 0:
@@ -95,26 +114,29 @@ try:
 
             data_pos.append(pos)
             data_btn.append(button)
+        
+        for i in range(3):
+            data_analog[i] = read_analog(0x05+i)
+            diff = (data_analog[i]-A_voltage[i])/0.18
+            A_pos[i] = A_pos[i] + round(diff)
+            if 0.7>(diff%0.18) > 0.3:
+                A_pos[i] += 1
+            A_voltage[i] = data_analog[i]
+
+        print(f"RS1: {A_pos[0]}, RS2=> {A_pos[1]}, RS3: {A_pos[2]}")
         '''
-        a0 = read_analog(REG_ANALOG_0)
-        a1 = read_analog(REG_ANALOG_1)
-        a2 = read_analog(REG_ANALOG_2)
-        a3 = read_analog(REG_ANALOG_3) #V_REF
-        V_switch = a3/19
         print(f"RS1=> {a0/V_switch:.2f}: {a0:.2f}V, RS2=> {a1/V_switch:.2f}: {a1:.2f}V, RS3=> {a2/V_switch:.2f}: {a2:.2f}V")
-        '''
-        pos0 = read_position(REG_ANALOG0_POS)
-        pos1 = read_position(REG_ANALOG1_POS)
-        pos2 = read_position(REG_ANALOG2_POS)
+
+        pos0 = 
 
         print(f"A0 Position: {pos0}, A1 Position: {pos1}, A2 Position: {pos2}")
         time.sleep(0.1)
+        '''
         
         bus.write_byte(I2C_ADDR, 0x10)  
         time.sleep(0.01)
         id_num = bus.read_i2c_block_data(I2C_ADDR, 0x10, unique_id_size)
         #print(f"Encoder position: {data_pos[0]}, {data_pos[1]}, {data_pos[2]}, {data_pos[3]}/ Button pressed: {bool(data_btn[0])}, {bool(data_btn[1])}, {bool(data_btn[2])}, {bool(data_btn[3])}/ Received Unique ID:", " ".join(f"{b:02X}" for b in id_num))
-
 
 except KeyboardInterrupt:        
     print("exiting")
