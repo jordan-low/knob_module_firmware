@@ -115,7 +115,7 @@ try:
         time.sleep(0.01)
         id_num = bus.read_i2c_block_data(I2C_ADDR, 0x10, unique_id_size)
         # print for internal knob
-        print(f"Encoder position: {data_pos[1]}, Button pressed: {data_btn[1]}, {a3:.2f} Received Unique ID:",
+        print(f"Encoder position: {data_pos[1]}, Button pressed: {data_btn[1]}, ADC: {a3:.2f} Received Unique ID:",
            " ".join(f"{b:02X}" for b in id_num))
         
         #print for 4 encoder 
