@@ -17,6 +17,7 @@
 #define REG_ANALOG1    0x06
 #define REG_ANALOG2    0x07
 #define REG_ANALOG3    0x08
+#define REG_ANALOG4    0X09
 #define REG_VERSION    0xFE
 #define REG_UNIQUE_ID  0x10
 
@@ -79,6 +80,7 @@ void requestEvent() {
       Wire.write((analogValues[3] >> 8) & 0xFF);
       Wire.write(analogValues[3] & 0xFF);
       break;
+      
     case REG_VERSION:
       Wire.write(HARDWARE_VER_MAJOR);
       Wire.write(HARDWARE_VER_MINOR);

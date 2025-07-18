@@ -2,7 +2,8 @@ import smbus2
 import time
 
 I2CBUS = 7
-I2C_ADDR = 0x51
+I2C_ADDR_1 = 0x51 #internal knob
+I2C_ADDR_2 = 0x49 #operational board
 unique_id_size = 10
 SAMPLING_RATE = 100
 bus = smbus2.SMBus(I2CBUS)
@@ -40,13 +41,13 @@ def lookup_target(raw_value, lut):
     closest = min(lut, key=lambda pair: abs(pair[0] - raw_value))
     return closest[1]
 
-def set_position(index, value):
+def set_position(I2C_ADDR, index, value):
     lsb = value & 0xFF
     msb = (value >> 8) & 0xFF
     bus.write_i2c_block_data(I2C_ADDR, 0x00 + index, [lsb, msb])
     time.sleep(0.01)
 
-def read_encoder(reg):
+def read_encoder(I2C_ADDR, reg):
     bus.write_i2c_block_data(I2C_ADDR, 0x00, [reg])
     time.sleep(0.01)
     data = bus.read_i2c_block_data(I2C_ADDR, reg, 3)
@@ -56,7 +57,7 @@ def read_encoder(reg):
     button = data[2]
     return pos, button
 
-def read_analog(reg):
+def read_analog(I2C_ADDR, reg):
     bus.write_byte(I2C_ADDR, reg)
     time.sleep(0.01)
     data = bus.read_i2c_block_data(I2C_ADDR, reg, 2)
@@ -67,7 +68,7 @@ def read_analog(reg):
 def set_sampling_rate(value):
     bus.write_i2c_block_data(I2C_ADDR, SAMPLING_RATE, [value])
 
-def get_version():
+def get_version(I2C_ADDR):
     bus.write_byte(I2C_ADDR, REG_VERSION, 4)
     time.sleep(0.01)
     data = bus.read_i2c_block_data(I2C_ADDR, REG_VERSION, 4)
@@ -85,7 +86,7 @@ try:
         data_pos = []
         data_btn = []
         for i in range(1, 5):
-            pos, button = read_encoder(0x00 + i)
+            pos, button = read_encoder(I2C_ADDR_1, (0x00 + i))
             if prev_buttons[i - 1] == 1 and button == 0:
                 set_position(i, 0)  # Reset encoder i to 0
             prev_buttons[i - 1] = button
@@ -93,30 +94,34 @@ try:
             data_pos.append(pos)
             data_btn.append(button)
     
-        a0 = read_analog(REG_ANALOG_0)
-        a1 = read_analog(REG_ANALOG_1)
-        a2 = read_analog(REG_ANALOG_2)
-        a3 = read_analog(REG_ANALOG_3)  # V_REF
+        a0_2 = read_analog(I2C_ADDR_2, REG_ANALOG_0)
+        a1_2 = read_analog(I2C_ADDR_2, REG_ANALOG_1)
+        a2_2 = read_analog(I2C_ADDR_2, REG_ANALOG_2)
+        a3_2 = read_analog(I2C_ADDR_2, REG_ANALOG_3)  # V_REF
+        a3_1 = read_analog(I2C_ADDR_1, REG_ANALOG_3)
 
-        V_switch = a3 / 19
+        V_switch = a3_2 / 19
 
-        scaled_a0 = a0 / V_switch
-        scaled_a1 = a1 / V_switch
-        scaled_a2 = a2 / V_switch
+        scaled_a0 = a0_2 / V_switch
+        scaled_a1 = a1_2 / V_switch
+        scaled_a2 = a2_2 / V_switch
 
         target_rs1 = lookup_target(scaled_a0, rs1_table)
         target_rs2 = lookup_target(scaled_a1, rs2_table)
         target_rs3 = lookup_target(scaled_a2, rs3_table)
 
         #print for operational knob 
-        #print(f"RS1=> {scaled_a0:.2f} (raw), {target_rs1} (target) RS2=> {scaled_a1:.2f} (raw), {target_rs2} (target) RS3=> {scaled_a2:.2f} (raw), {target_rs3} (target)")
+        print(f"RS1=> {target_rs1} RS2=> {target_rs2} RS3=> {target_rs3} (target) Received Unique ID:",
+           " ".join(f"{b:02X}" for b in id_num_2))
         
-        bus.write_byte(I2C_ADDR, 0x10)
+        bus.write_byte(I2C_ADDR_1, 0x10)
+        bus.write_byte(I2C_ADDR_2, 0x10)
         time.sleep(0.01)
-        id_num = bus.read_i2c_block_data(I2C_ADDR, 0x10, unique_id_size)
+        id_num_1 = bus.read_i2c_block_data(I2C_ADDR_1, 0x10, unique_id_size)
+        id_num_2 = bus.read_i2c_block_data(I2C_ADDR_2, 0x10, unique_id_size)
         # print for internal knob
-        print(f"Encoder position: {data_pos[1]}, Button pressed: {data_btn[1]}, ADC: {a3:.2f} Received Unique ID:",
-           " ".join(f"{b:02X}" for b in id_num))
+        print(f"Encoder position: {data_pos[1]}, ADC: {a3_1:.2f} Received Unique ID:",
+           " ".join(f"{b:02X}" for b in id_num_1))
         
         #print for 4 encoder 
         '''
