@@ -145,10 +145,11 @@ void loop() {
     int a = digitalRead(encoder[i].pinA);
     int b = digitalRead(encoder[i].pinB);
     if (a !=encoder[i].lastStateA){
-      if(a==b) 
-      encoder[i].value++;
-      else
-      encoder[i].value--;
+      if(a==b) {
+        encoder[i].value++;
+      } else {
+       encoder[i].value--;
+      }
       encoder[i].lastStateA = a;
     }
     encoder[i].buttonPressed = (digitalRead(encoder[i].pinButton)==LOW);

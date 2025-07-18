@@ -17,13 +17,10 @@
 #define REG_ANALOG1    0x06
 #define REG_ANALOG2    0x07
 #define REG_ANALOG3    0x08
-#define REG_ANALOG0_POS 0x09
-#define REG_ANALOG1_POS 0x0A
-#define REG_ANALOG2_POS 0x0B
 #define REG_VERSION    0xFE
 #define REG_UNIQUE_ID  0x10
 
-const int addrPins[] = {2, 1, 20};
+const int addrPins[] = {2, 1, 20}; 
 const int numAddrPins = sizeof(addrPins) / sizeof(addrPins[0]);
 const int analogPins[] = {18, 19, 7, 6};
 const int numAnalogPins = sizeof(analogPins) / sizeof(analogPins[0]);
@@ -34,17 +31,6 @@ volatile uint8_t RegisterAddress = REG_ENCODER1;
 uint8_t sampling_Delay = 100;
 uint8_t ledState = 0;
 
-float A_voltage[] = {0.0, 0.0, 0.0};
-int A_pos[] = {0, 0, 0};
-
-float get_voltage(int Analogread) {
-  return Analogread / 1024.0 * 3.3;
-}
-
-int get_position(float Vin, float Vref) {
-  float V_switch = Vref / 19.0;
-  return round(Vin / V_switch);
-}
 
 struct Encoder {
   int pinA;
@@ -93,18 +79,6 @@ void requestEvent() {
       Wire.write((analogValues[3] >> 8) & 0xFF);
       Wire.write(analogValues[3] & 0xFF);
       break;
-    case REG_ANALOG0_POS:
-      Wire.write(A_pos[0] & 0xFF);
-      Wire.write((A_pos[0] >> 8) & 0xFF);
-      break;
-    case REG_ANALOG1_POS:
-      Wire.write(A_pos[1] & 0xFF);
-      Wire.write((A_pos[1] >> 8) & 0xFF);
-      break;
-    case REG_ANALOG2_POS:
-      Wire.write(A_pos[2] & 0xFF);
-      Wire.write((A_pos[2] >> 8) & 0xFF);
-      break;
     case REG_VERSION:
       Wire.write(HARDWARE_VER_MAJOR);
       Wire.write(HARDWARE_VER_MINOR);
@@ -146,12 +120,12 @@ void receiveEvent(int BytesReceived) {
 }
 
 void setup() {
-  for (int i = 0; i < numAnalogPins; i++) {
+  for (int i = 2; i < numAnalogPins; i++) {
     pinMode(analogPins[i], INPUT);
   }
 
   for (int i = 0; i < numAddrPins; i++) {
-    pinMode(addrPins[i], INPUT_PULLUP);
+    pinMode(addrPins[i], INPUT);
   }
 
   for (int i = 0; i < 4; i++) {
@@ -169,16 +143,7 @@ void setup() {
   Wire.begin(I2C_addr);
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent);
-/*
-  for (int i = 0; i < numAnalogPins; i++) {
-    analogValues[i] = analogRead(analogPins[i]);
-    if (i < 3) {
-      A_voltage[i] = get_voltage(analogValues[i]);
-      float v_ref = get_voltage(analogValues[3]);
-      A_pos[i] = get_position(A_voltage[i], v_ref);
-    }
-  }
-*/
+
 }
 
 
@@ -188,38 +153,22 @@ void loop() {
   //float v_ref = get_voltage(analogRead(analogPins[3]));
   for (int i = 0; i < 4; i++) {
     analogValues[i] = analogRead(analogPins[i]);
-    //float a_voltage_read = get_voltage(analogValues[i]);
-
-    // Print raw voltages for debug
-    /*
-
-    if (abs(A_voltage[i] - a_voltage_read) > 0.02) {
-      if (A_voltage[i] > a_voltage_read) {
-        A_pos[i] -= 1;
-      } else {
-        A_pos[i] += 1;
-      }
-      A_voltage[i] = a_voltage_read;
-    } else {
-      A_voltage[i] = a_voltage_read;
-    }
-
-    */
   }
 
   // Keep the encoder update part
   for (int i = 0; i < 4; i++) {
     int a = digitalRead(encoders[i].pinA);
     int b = digitalRead(encoders[i].pinB);
-    if (a != encoders[i].lastStateA) {
-      if (a == b)
+    if (a == HIGH && encoders[i].lastStateA == LOW) { // rising edge only
+      if (b == LOW)
         encoders[i].value++;
       else
         encoders[i].value--;
-      encoders[i].lastStateA = a;
     }
+    encoders[i].lastStateA = a;
     encoders[i].buttonPressed = (digitalRead(encoders[i].pinButton) == LOW);
   }
 
-  delay(500);  // Slower update so you can read the Serial Monitor
+  
+  delayMicroseconds(1800);
 }
