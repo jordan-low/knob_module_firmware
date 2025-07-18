@@ -2,7 +2,7 @@ import smbus2
 import time
 
 I2CBUS = 7
-I2C_ADDR = 0x49
+I2C_ADDR = 0x51
 unique_id_size = 10
 SAMPLING_RATE = 100
 bus = smbus2.SMBus(I2CBUS)
@@ -92,7 +92,7 @@ try:
 
             data_pos.append(pos)
             data_btn.append(button)
-
+    
         a0 = read_analog(REG_ANALOG_0)
         a1 = read_analog(REG_ANALOG_1)
         a2 = read_analog(REG_ANALOG_2)
@@ -108,16 +108,22 @@ try:
         target_rs2 = lookup_target(scaled_a1, rs2_table)
         target_rs3 = lookup_target(scaled_a2, rs3_table)
 
-        print(f"RS1=> {scaled_a0:.2f} (raw), {target_rs1} (target)")
-        print(f"RS2=> {scaled_a1:.2f} (raw), {target_rs2} (target)")
-        print(f"RS3=> {scaled_a2:.2f} (raw), {target_rs3} (target)")
-
+        #print for operational knob 
+        #print(f"RS1=> {scaled_a0:.2f} (raw), {target_rs1} (target) RS2=> {scaled_a1:.2f} (raw), {target_rs2} (target) RS3=> {scaled_a2:.2f} (raw), {target_rs3} (target)")
+        
         bus.write_byte(I2C_ADDR, 0x10)
         time.sleep(0.01)
         id_num = bus.read_i2c_block_data(I2C_ADDR, 0x10, unique_id_size)
-        # Uncomment below to print encoder positions, buttons and unique ID
-        # print(f"Encoder position: {data_pos}, Button pressed: {data_btn}, Received Unique ID:",
-        #       " ".join(f"{b:02X}" for b in id_num))
+        # print for internal knob
+        print(f"Encoder position: {data_pos[1]}, Button pressed: {data_btn[1]}, {a3:.2f} Received Unique ID:",
+           " ".join(f"{b:02X}" for b in id_num))
+        
+        #print for 4 encoder 
+        '''
+        print(f"Encoder position: {data_pos}, Button pressed: {data_btn}, Received Unique ID:",
+           " ".join(f"{b:02X}" for b in id_num))
+        '''
+        
 
 except KeyboardInterrupt:
     print("exiting")
