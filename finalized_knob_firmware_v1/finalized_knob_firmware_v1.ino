@@ -1,6 +1,7 @@
-#include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoUniqueID.h>
+#include <Adafruit_NeoPixel.h>
+
 
 #define I2C_ADDR 0x49
 
@@ -21,17 +22,42 @@
 #define REG_VERSION    0xFE
 #define REG_UNIQUE_ID  0x10
 
-const int addrPins[] = {2, 1, 20}; 
+
+#define LED_PIN 18
+#define NUM_LEDS 1
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+enum Color { RED, GREEN, BLUE };
+Color currentColor = RED;
+
+void changeColor() {
+  if (currentColor == RED) {
+    strip.setPixelColor(0, strip.Color(0, 255, 0)); // Green
+    currentColor = GREEN;
+  } else if (currentColor == GREEN) {
+    strip.setPixelColor(0, strip.Color(0, 0, 255)); // Blue
+    currentColor = BLUE;
+  } else {
+    strip.setPixelColor(0, strip.Color(255, 0, 0)); // Red
+    currentColor = RED;
+  }
+  strip.show();
+}
+
+
+const int addrPins[] = {2, 1, 20};
 const int numAddrPins = sizeof(addrPins) / sizeof(addrPins[0]);
+
 const int analogPins[] = {18, 19, 7, 6};
 const int numAnalogPins = sizeof(analogPins) / sizeof(analogPins[0]);
 
 int analogValues[numAnalogPins];
+int prevAnalogValues[numAnalogPins] = {0};
+
 volatile uint8_t I2C_addr = 0x00;
 volatile uint8_t RegisterAddress = REG_ENCODER1;
 uint8_t sampling_Delay = 100;
 uint8_t ledState = 0;
-
 
 struct Encoder {
   int pinA;
@@ -49,6 +75,10 @@ Encoder encoders[4] = {
   {4, 5, 9, HIGH, 0, false},
 };
 
+int prevEncoderValues[4] = {0};
+bool prevButtonStates[4] = {false};
+
+
 void requestEvent() {
   uint8_t ch = RegisterAddress - REG_ENCODER1;
   switch (RegisterAddress) {
@@ -65,22 +95,14 @@ void requestEvent() {
       }
       break;
     case REG_ANALOG0:
-      Wire.write((analogValues[0] >> 8) & 0xFF);
-      Wire.write(analogValues[0] & 0xFF);
-      break;
     case REG_ANALOG1:
-      Wire.write((analogValues[1] >> 8) & 0xFF);
-      Wire.write(analogValues[1] & 0xFF);
-      break;
     case REG_ANALOG2:
-      Wire.write((analogValues[2] >> 8) & 0xFF);
-      Wire.write(analogValues[2] & 0xFF);
+    case REG_ANALOG3: {
+      int index = RegisterAddress - REG_ANALOG0;
+      Wire.write((analogValues[index] >> 8) & 0xFF);
+      Wire.write(analogValues[index] & 0xFF);
       break;
-    case REG_ANALOG3:
-      Wire.write((analogValues[3] >> 8) & 0xFF);
-      Wire.write(analogValues[3] & 0xFF);
-      break;
-      
+    }
     case REG_VERSION:
       Wire.write(HARDWARE_VER_MAJOR);
       Wire.write(HARDWARE_VER_MINOR);
@@ -121,8 +143,9 @@ void receiveEvent(int BytesReceived) {
   }
 }
 
+
 void setup() {
-  for (int i = 2; i < numAnalogPins; i++) {
+  for (int i = 0; i < numAnalogPins; i++) {
     pinMode(analogPins[i], INPUT);
   }
 
@@ -137,6 +160,7 @@ void setup() {
     encoders[i].lastStateA = digitalRead(encoders[i].pinA);
   }
 
+  // Assign I2C address
   if (digitalRead(addrPins[0]) == 1) I2C_addr += 1;
   if (digitalRead(addrPins[1]) == 1) I2C_addr += 4;
   if (digitalRead(addrPins[2]) == 1) I2C_addr += 8;
@@ -146,31 +170,59 @@ void setup() {
   Wire.onRequest(requestEvent);
   Wire.onReceive(receiveEvent);
 
+  // LED strip init
+  strip.begin();
+  strip.show();
+  strip.setPixelColor(0, strip.Color(255, 0, 0)); // Start with RED
+  strip.show();
 }
 
 
-
-// Then modify your loop() function like this:
 void loop() {
-  //float v_ref = get_voltage(analogRead(analogPins[3]));
+  bool changed = false;
+
+  // Read and compare analog values
   for (int i = 0; i < 4; i++) {
-    analogValues[i] = analogRead(analogPins[i]);
+    int newValue = analogRead(analogPins[i]);
+    analogValues[i] = newValue;
+    if (abs(newValue - prevAnalogValues[i]) > 5) {
+      prevAnalogValues[i] = newValue;
+      changed = true;
+    }
   }
 
-  // Keep the encoder update part
+  // Handle encoders
   for (int i = 0; i < 4; i++) {
     int a = digitalRead(encoders[i].pinA);
     int b = digitalRead(encoders[i].pinB);
-    if (a == HIGH && encoders[i].lastStateA == LOW) { // rising edge only
+
+    if (a == HIGH && encoders[i].lastStateA == LOW) {
       if (b == LOW)
         encoders[i].value++;
       else
         encoders[i].value--;
     }
     encoders[i].lastStateA = a;
-    encoders[i].buttonPressed = (digitalRead(encoders[i].pinButton) == LOW);
+
+    // Detect encoder value change
+    if (encoders[i].value != prevEncoderValues[i]) {
+      prevEncoderValues[i] = encoders[i].value;
+      changed = true;
+    }
+
+    // Detect button press change
+    bool pressed = (digitalRead(encoders[i].pinButton) == LOW);
+    encoders[i].buttonPressed = pressed;
+    if (pressed != prevButtonStates[i]) {
+      prevButtonStates[i] = pressed;
+      changed = true;
+    }
   }
 
-  
+  // If anything changed change LED color
+  if (changed) {
+    changeColor();
+  }
+
   delayMicroseconds(1800);
 }
