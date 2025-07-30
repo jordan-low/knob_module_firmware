@@ -22,7 +22,6 @@ def cycle_led_color():
     bus.write_i2c_block_data(I2C_ADDR_1, REG_LED_COLOR, [current_color])
     print(f"LED color cycled to: {['Red', 'Green', 'Blue'][current_color]}")
 
-
 def lookup_target(raw_value, lut):
     closest = min(lut, key=lambda pair: abs(pair[0] - raw_value))
     return closest[1]
@@ -60,14 +59,13 @@ def get_version():
     data = bus.read_i2c_block_data(I2C_ADDR_1, REG_VERSION, 4)
     return f"{data[0]}.{data[1]}", f"{data[2]}.{data[3]}"
 
-
 try:
     set_sampling_rate(SAMPLING_RATE)
     hardware_version, firmware_version = get_version()
     print(f"hardware version : {hardware_version}, firmware version: {firmware_version}")
 
-    prev_buttons = 0
-    prev_positions = 0
+    prev_buttons = [1] * 4  # initialize as list for button states (1 = unpressed)
+    prev_positions = [0] * 4  # initialize as list for encoder positions
     prev_adc = 0.0
 
     while True:

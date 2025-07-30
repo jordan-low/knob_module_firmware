@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoUniqueID.h>
-#include <TinyNeoPixel.h>
+#include <tinyNeoPixel.h>
 
 #define I2C_ADDR 0x49
 
@@ -22,27 +22,16 @@
 #define REG_VERSION    0xFE
 #define REG_UNIQUE_ID  0x10
 
+#define REG_LED_COLOR  0x20  // Added for clarity
+
 #define LED_PIN 18      
 #define NUM_LEDS 1
 
-TinyNeoPixel strip = TinyNeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+typedef tinyNeoPixel NeoPixel;
+NeoPixel strip = NeoPixel(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 enum Color { RED, GREEN, BLUE };
 Color currentColor = RED;
-
-void changeColor() {
-  if (currentColor == RED) {
-    strip.setPixelColor(0, strip.Color(0, 255, 0)); // Green
-    currentColor = GREEN;
-  } else if (currentColor == GREEN) {
-    strip.setPixelColor(0, strip.Color(0, 0, 255)); // Blue
-    currentColor = BLUE;
-  } else {
-    strip.setPixelColor(0, strip.Color(255, 0, 0)); // Red
-    currentColor = RED;
-  }
-  strip.show();
-}
 
 const int addrPins[] = {2, 1, 20};
 const int numAddrPins = sizeof(addrPins) / sizeof(addrPins[0]);
@@ -76,6 +65,29 @@ Encoder encoders[4] = {
 
 int prevEncoderValues[4] = {0};
 bool prevButtonStates[4] = {false};
+
+void setLedColor(uint8_t color) {
+  switch (color) {
+    case 0: // Red
+      strip.setPixelColor(0, strip.Color(255, 0, 0));
+      currentColor = RED;
+      break;
+    case 1: // Green
+      strip.setPixelColor(0, strip.Color(0, 255, 0));
+      currentColor = GREEN;
+      break;
+    case 2: // Blue
+      strip.setPixelColor(0, strip.Color(0, 0, 255));
+      currentColor = BLUE;
+      break;
+    default:
+      // Default to Red if invalid value
+      strip.setPixelColor(0, strip.Color(255, 0, 0));
+      currentColor = RED;
+      break;
+  }
+  strip.show();
+}
 
 void requestEvent() {
   uint8_t ch = RegisterAddress - REG_ENCODER1;
@@ -125,8 +137,9 @@ void receiveEvent(int BytesReceived) {
           case 0x30:
             if (data1 > 0 && data1 < 200) sampling_Delay = data1;
             break;
-          case 0x20:
+          case REG_LED_COLOR:
             ledState = data1;
+            setLedColor(ledState);
             break;
         }
       } else if (BytesReceived == 3) {
@@ -169,8 +182,7 @@ void setup() {
 
   // Initialize NeoPixel
   strip.begin();
-  strip.setPixelColor(0, strip.Color(255, 0, 0)); // Red
-  strip.show();
+  setLedColor(RED);  // start with Red
 }
 
 void loop() {
@@ -212,10 +224,7 @@ void loop() {
     }
   }
 
-  // If anything changed, update LED
-  if (changed) {
-    changeColor();
-  }
+  // Removed LED auto color change here — Jetson controls LED color now!
 
   delayMicroseconds(1800);
 }

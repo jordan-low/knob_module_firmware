@@ -91,6 +91,7 @@ try:
     while True:
         data_pos = []
         data_btn = []
+        changed = False
         for i in range(1, 5):
             pos, button = read_encoder(I2C_ADDR_1, (0x00 + i))
             #reset encoder value when button pressed
